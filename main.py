@@ -2,25 +2,28 @@ from tkinter import *
 from tkinter import messagebox
 from random import shuffle, randint, choice
 import pyperclip
-
+import json
 # Constants:
 FONT = ("San Francisco", 10, "bold")
 YELLOW = "#FDCA40"
 PURPlE = "#542E71"
 PURPLE_TWO = "#A799B7"
 RED = "#FB3640"
-USERNAME = ""  # ADD YOUR USERNAME HERE
+USERNAME = "inflame"  # ADD YOUR USERNAME HERE
 
 
 # Password generation
 def generate_password():
-    letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+    """Generates a password if 'generate password' button was pressed."""
+    letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+               'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+               'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     numbers = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
     symbols = ['!', '#', '$', '%', '&', '(', ')', '*', '+']
 
-    password_letters = [choice(letters) for char in range(randint(10, 20))]
-    password_symbols = [choice(symbols) for symbol in range(randint(5, 10))]
-    password_numbers = [choice(numbers) for num in range(randint(5, 10))]
+    password_letters = [choice(letters) for _ in range(randint(10, 20))]
+    password_symbols = [choice(symbols) for _ in range(randint(5, 10))]
+    password_numbers = [choice(numbers) for _ in range(randint(5, 10))]
 
     password_list = [*password_letters, *password_symbols, *password_numbers]
     shuffle(password_list)
@@ -32,39 +35,72 @@ def generate_password():
 
 
 def save():
+    """Saves information the .json file if 'add' button was pressed."""
     # Get hold of all the data
     website = website_entry.get()
     user = username_entry.get()
     password = password_entry.get()
+    new_data = {
+        website: {
+            "user": user,
+            "password": password
+        }
+    }
 
     # Check if user filled all entries
     if len(password) != 0 and len(website) != 0:
+        # Open or create the file.
+        try:
+            with open("data.json", "r") as data_file:
+                data = json.load(data_file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            data = new_data
+        else:
+            data.update(new_data)
 
-        # Message box:
-        is_ok = messagebox.askokcancel(title=messagebox, message=f"These are the details entered: \nEmail: {user} "
-                                                                 f"\nPassword: {password} \nSave information?")
-        if is_ok:
-            # Data.txt
-            with open("data.txt", "a") as data_file:
-                data_file.write(f"WEBSITE: {website} | USERNAME: {user} | PASSWORD: {password}\n")
+        with open("data.json", "w") as data_file:
+            json.dump(data, data_file, indent=4)
 
-            # Clear the entries
-            website_entry.delete(0, END)
-            password_entry.delete(0, END)
+        # Clear the entries
+        website_entry.delete(0, END)
+        password_entry.delete(0, END)
 
-            # Return cursor to the website entry
-            website_entry.focus()
+        # Return cursor to the website entry
+        website_entry.focus()
     else:
         messagebox.showerror(title="Something Not Right", message="PLease do not any fields empty!")
 
 
 def clear():
+    """Clears the .json file if '!clear data!' button was pressed."""
     want_to_clear = messagebox.askokcancel(title="Clear Information", message="Are you sure you want to clear all the "
                                                                               "data from data.txt?")
     if want_to_clear:
         # Clear the data.txt
-        with open("data.txt", "r+") as file:
+        with open("data.json", "r+") as file:
             file.truncate(0)
+
+
+def search():
+    """
+    If search button was pressed: searching through the .json file.
+    Returns messagebox with information if it exists.
+    Returns error messagebox if information or file does not exist.
+    """
+    website_to_search = website_entry.get()
+
+    try:
+        with open("data.json", "r") as data_file:
+            data = json.load(data_file)
+    except json.JSONDecodeError:
+        messagebox.showerror(title="Error", message="No Data File Found.")
+    else:
+        if website_to_search in data:
+            messagebox.showinfo(title=data[website_to_search], message=f"Username: {data[website_to_search]['user']}"
+                                                                       f"\nPassword: "f"{data[website_to_search]['password']} ")
+        else:
+            messagebox.showerror(title="No website", message=f"There is no such website as {website_to_search} "
+                                                             f"in the data.")
 
 
 # UI SETUP
@@ -93,7 +129,7 @@ password_label.grid(column=0, row=3)
 
 # Entries
 website_entry = Entry(fg=PURPlE, font=FONT)
-website_entry.grid(column=1, row=1, columnspan=2, sticky=EW, pady=10, padx=10)
+website_entry.grid(column=1, row=1, sticky=EW, pady=10, padx=10)
 website_entry.focus()
 
 username_entry = Entry(fg=PURPlE, font=FONT)
@@ -113,6 +149,9 @@ add_button.grid(column=1, row=4, columnspan=2, sticky=EW, pady=10, padx=10)
 
 clear_button = Button(text="!Clear Data!", font=FONT, bg=RED, command=clear)
 clear_button.grid(column=0, row=4, sticky=EW, pady=10, padx=10)
+
+search_button = Button(text="Search", font=FONT, bg=PURPLE_TWO, fg=PURPlE, command=search)
+search_button.grid(column=2, row=1, sticky=EW, padx=10, pady=10)
 
 # The end
 window.mainloop()
